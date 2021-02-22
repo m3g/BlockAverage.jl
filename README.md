@@ -10,6 +10,12 @@ julia> ] add https://github.com/m3g/BlockAverage.jl
 
 ```
 
+A help entry is available with:
+```julia
+julia> ? block_average
+
+```
+
 ## Examples:
 
 ### Data that is not time-correlated:
@@ -34,6 +40,50 @@ Results in:
 ![random.png](./docs/images/random.png)
 
 Note that the average (scatter points) and the error of the estimate of the mean are roughly constant with block size, indicating that the data is not correlated "in time". 
+
+2. Compute the average number of points in `x` such that `x > 0.2`:
+
+```julia
+julia> avg, err, sizes = block_average(x,by=v->count(v .> 0.2)/length(v))
+
+```
+
+Note that here we pass an anonymous function `v -> count(v .> 0.2)/length(v)` which will compute the mean number of elements of `v` that are greater than `0.2`. This function will be used to compute, for every block size, the value of the function at that block.  
+
+The corresponding plot is:
+
+![random2.png](./docs/images/random2.png)
+
+
+### Data that is time-correlated
+
+The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can genereate a test data set using:
+
+```
+julia> x = BlockAverage.test_data(10_000);
+
+```
+Which in this run produced:
+
+![corrleated1.png](./docs/images/correlated1.png)
+
+The error of the estimate of the mean is, now, dependent on the block size, and we cannot see any convergence of the error, indicating that the sampling is not enough to obtain a reliable estimate:  
+
+```julia
+julia> avg, err, sizes = block_average(x);
+
+julia> scatter(sizes,avg,ribbon=err,label="",ylabel="mean and error",xlabel="block size")
+
+```
+
+![corrleated2.png](./docs/images/correlated2.png)
+
+
+
+
+
+
+
 
 
 

@@ -86,10 +86,13 @@ julia> x = BlockAverage.test_data(1_000_000);
 
 The obtained set is now much better sampled,
 
-![corrleated3.png](./docs/images/correlated2.png)
+![corrleated3.png](./docs/images/correlated3.png)
 
 
-and it is possible to observe the convergence of the estimate of the error of the mean for block sizes that are large enough. 
+and it is possible to observe the convergence of the estimate of the error of the mean for block sizes that are large enough: 
+
+![corrleated3.png](./docs/images/correlated4.png)
+
 
 
 

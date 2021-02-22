@@ -20,7 +20,7 @@ julia> ? block_average
 
 ### Data that is not time-correlated:
 
-1. Compute the average of a random variable `x`:
+#### Compute the average of a random variable `x`:
 
 ```julia
 julia> using BlockAverage
@@ -41,7 +41,7 @@ Results in:
 
 Note that the average (scatter points) and the error of the estimate of the mean are roughly constant with block size, indicating that the data is not correlated "in time". 
 
-2. Compute the average number of points in `x` such that `x > 0.2`:
+#### Compute the average number of points in `x` such that `x > 0.2`:
 
 ```julia
 julia> avg, err, sizes = block_average(x,by=v->count(v .> 0.2)/length(v))
@@ -56,6 +56,8 @@ The corresponding plot is:
 
 
 ### Data that is time-correlated
+
+#### Poorly-sampled data
 
 The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can generate a test data (sort of a monte-carlo simulation of a particle in an harmonic well) using:
 
@@ -77,6 +79,8 @@ julia> scatter(sizes,avg,ribbon=err,label="",ylabel="mean and error",xlabel="blo
 ```
 
 ![corrleated2.png](./docs/images/correlated2.png)
+
+#### Properly sampled data
 
 If we increase the sampling by generating longer simulation:
 ```

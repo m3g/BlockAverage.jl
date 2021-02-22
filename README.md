@@ -57,7 +57,7 @@ The corresponding plot is:
 
 ### Data that is time-correlated
 
-The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can generate a test data (sort of a monte-carlo simulation of a particle in an harmonic well) set using:
+The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can generate a test data (sort of a monte-carlo simulation of a particle in an harmonic well) using:
 
 ```
 julia> x = BlockAverage.test_data(1_000);
@@ -67,7 +67,7 @@ Which in this run produced:
 
 ![corrleated1.png](./docs/images/correlated1.png)
 
-The error of the estimate of the mean is, now, dependent on the block size, and we cannot see any convergence of the error, indicating that the sampling is not enough to obtain a reliable estimate:  
+The error of the estimate of the mean is, now, dependent on the block size, and we cannot see any convergence of the error, indicating that the sampling is not enough to obtain a reliable estimate of the mean value of `x`:  
 
 ```julia
 julia> avg, err, sizes = block_average(x);
@@ -92,6 +92,14 @@ The obtained set is now much better sampled,
 and it is possible to observe the convergence of the estimate of the error of the mean for block sizes that are large enough: 
 
 ![corrleated3.png](./docs/images/correlated4.png)
+
+Note that the average value of `x` here is `-0.0693` and the estimate of the error of this average is of `±0.17`, consistently with the fact that this "simulation" should be centered at `x=0`.
+
+The time required to essentially decorrelated the data appears to be of the order of `10_000` steps, as indicated by the convergence of the estimate of the error of the mean. 
+
+
+
+
 
 
 

@@ -1,6 +1,6 @@
 # BlockAverage
 
-Computes the block average of time-dependent data, to compute the standard error of the mean and, to detect sampling problems.  
+Computes the block average of time-dependent data, to compute the standard error of the mean and, to detect sampling problems. A didactical explanation of block averaging is available [here](http://sachinashanbhag.blogspot.com/2013/08/block-averaging-estimating-uncertainty.html).  
 
 ## Instalation
 

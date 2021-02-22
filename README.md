@@ -57,10 +57,10 @@ The corresponding plot is:
 
 ### Data that is time-correlated
 
-The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can genereate a test data set using:
+The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can generate a test data (sort of a monte-carlo simulation of a particle in an harmonic well) set using:
 
 ```
-julia> x = BlockAverage.test_data(10_000);
+julia> x = BlockAverage.test_data(1_000);
 
 ```
 Which in this run produced:
@@ -77,6 +77,20 @@ julia> scatter(sizes,avg,ribbon=err,label="",ylabel="mean and error",xlabel="blo
 ```
 
 ![corrleated2.png](./docs/images/correlated2.png)
+
+If we increase the sampling by generating longer simulation:
+```
+julia> x = BlockAverage.test_data(1_000_000);
+
+```
+
+The obtained set is now much better sampled,
+
+![corrleated3.png](./docs/images/correlated2.png)
+
+
+and it is possible to observe the convergence of the estimate of the error of the mean for block sizes that are large enough. 
+
 
 
 

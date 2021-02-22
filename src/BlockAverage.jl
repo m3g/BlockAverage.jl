@@ -110,10 +110,19 @@ end
 
 # Generate correlated data to test
 function test_data(n)
+  temperature = 1.
   x = Vector{Float64}(undef,n)
   x[1] = 0.
-  for i in 2:n
-    x[i] = x[i-1] + 0.02*rand() - 0.01 
+  u = 0.
+  i = 1
+  while i < n
+    x_trial = x[i] - 0.1 + 0.2*rand()
+    u_trial = x_trial^2
+    if u_trial < u || exp((u-u_trial)/temperature) > 0.5
+      i += 1
+      x[i] = x_trial
+      u = u_trial
+    end
   end
   x
 end

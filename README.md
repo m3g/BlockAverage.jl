@@ -25,13 +25,17 @@ julia> avg, err, sizes = block_average(x)
 
 julia> using Plots
 
-julia> scatter(sizes,avg,ribbon=err,label="")
+julia> scatter(sizes,avg,ribbon=err,label="",ylabel="Mean and error",xlabel="Block size")
 
 ```
 
 Results in:
 
 ![random.png](./docs/images/random.png)
+
+Note that the average (scatter points) and the error of the estimate of the mean are roughly constant with block size, indicating that the data is not correlated "in time". 
+
+
 
 
 

@@ -4,6 +4,7 @@ using DocStringExtensions
 using LaTeXStrings
 using Statistics: mean
 using StatsBase
+using EasyFit
 
 export block_average, BlockAverageData
 
@@ -34,6 +35,7 @@ struct BlockAverageData{T}
     xmean_maxerr::Vector{T}
     xmean_stderr::Vector{T}
     autocor::Vector{T}
+    tau::T
 end
 
 """
@@ -83,7 +85,7 @@ function block_average(
     by = mean,
     min_block_size::Int = 1,
     max_block_size::Int = length(x),
-    lags::Union{Nothing,StepRange{Int}} = nothing,
+    lags::Union{Nothing,AbstractVector{Int}} = nothing,
 ) where {T<:Real}
 
     n = length(x)
@@ -106,14 +108,14 @@ function block_average(
         push!(xmean_stderr, zero(T))
 
         # Compute the property in each block, and keep the maximum error
-        diff_max = 0.
+        diff_max = -Inf 
         for i in 1:nblocks
             xblock = @view x[brange(i, block_size)]
             this_block_mean = by(xblock)
             diff = abs(this_block_mean - xmean)
             if diff > diff_max
                 diff_max = diff
-                xmean_maxerr[end] = 100*(this_block_mean - xmean) / xmean
+                xmean_maxerr[end] = this_block_mean
             end
             # Compute the standard deviation of the property estimate (σ²/√N)
             xmean_stderr[end] += (this_block_mean - xmean)^2
@@ -126,14 +128,21 @@ function block_average(
     end
 
     # Compute auto-correlation function of the data
-    auto_cor = autocor(x, lags)
+    if isnothing(lags)
+        auto_cor = autocor(x)
+    else
+        auto_cor = autocor(x, lags)
+    end
+
+    tau = fitexp(1:length(auto_cor), auto_cor, c=0., u=upper(a=1.1), l=lower(a=0.9)).b
 
     return BlockAverageData{T}(
         xmean,
         blocksize,
         xmean_maxerr,
         xmean_stderr,
-        auto_cor
+        auto_cor,
+        tau 
     )
 
 end
@@ -164,31 +173,40 @@ function test_data(n)
     x
 end
 
-function plot(data::BlockAverageData; xlims=nothing, ylims=nothing)
+function plot(
+    data::BlockAverageData; 
+    xlims=nothing, 
+    ylims=nothing,
+    xscale=:identity,
+    title="",
+)
     Plots = Main.Plots
     p = Plots.plot(layout=(3,1))
     Plots.hline!(
-        [0],
+        [data.xmean],
         linestyle=:dash,
         alpha=0.5,
         color=:black,
         label=:none,
+        title=title,
+        subplot=1,
     )
     Plots.plot!(
         data.blocksize, data.xmean_maxerr, 
-        ylabel="max. deviation (%)",
+        ylabel="worst block value",
         xlabel=L"\textrm{block~size~}(N)",
         label=nothing,
         linewidth=2,
         marker=:circle,
         color=:black,
-        xscale=:log10,
+        xscale=xscale,
         subplot=1
     )
     Plots.annotate!(
-        minimum(data.blocksize) + 0.1*minimum(data.blocksize),
+        maximum(data.blocksize) - 0.1*maximum(data.blocksize),
         maximum(data.xmean_maxerr) - 0.1*(maximum(data.xmean_maxerr)-minimum(data.xmean_maxerr)),
-        Plots.text("mean = $(round(data.xmean, digits=2))", "Computer Modern", 12, :left)
+        Plots.text("mean = $(round(data.xmean, digits=2))", "Computer Modern", 12, :right),
+        subplot=1,
     )
     Plots.plot!(data.blocksize, data.xmean_stderr, 
         ylabel=L"\sigma^2 / \sqrt{N}",
@@ -197,7 +215,7 @@ function plot(data::BlockAverageData; xlims=nothing, ylims=nothing)
         linewidth=2,
         marker=:circle,
         color=:black,
-        xscale=:log10,
+        xscale=xscale,
         subplot=2
     )
     # Auto correlation function
@@ -208,6 +226,20 @@ function plot(data::BlockAverageData; xlims=nothing, ylims=nothing)
         linewidth=2,
         color=:black,
         subplot=3
+    )
+    Plots.plot!(
+        exp.(-inv(data.tau) * (0:length(data.autocor))),
+        label=nothing,
+        linewidth=2,
+        color=:black,
+        alpha=0.5,
+        subplot=3,
+    )
+    Plots.annotate!(
+        length(data.autocor) - 0.2*length(data.autocor),
+        0.80,
+        Plots.text("τ = $(round(data.tau, digits=2))", "Computer Modern", 12, :right),
+        subplot=3,
     )
     Main.plot!(
         p,

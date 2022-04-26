@@ -1,9 +1,40 @@
-
 module BlockAverage
 
+using DocStringExtensions
+using LaTeXStrings
 using Statistics: mean
+using StatsBase
 
-export block_average
+export block_average, BlockAverageData
+
+"""
+
+$(TYPEDEF)
+
+Structure that contains the result of the block-average analysis of the sequence. 
+
+`xmean` is the property value computed for all data (usually the mean, but not necessarily)
+
+`blocksize` is an array of block sizes, in which the data was split. 
+By default it goes from `1` to `length(x)`, with a number of points corresponding to the
+number of integer divisions of `lenth(x)`.
+
+`xmean_maxerr`: The property is computed for each block, and the maximum error (difference
+between the property in the block and the average property) is stored in this array.
+
+`xmean_stderr`: The standard error of the estimates of the property, meaning the standar 
+deviation of the estimates divided by the square root of the number of blocks. 
+
+`autocor`: Is the autocorrelation function of the data, as a function of the lag. 
+
+"""
+struct BlockAverageData{T}
+    xmean::T
+    blocksize::Vector{Int}
+    xmean_maxerr::Vector{T}
+    xmean_stderr::Vector{T}
+    autocor::Vector{T}
+end
 
 """
 
@@ -51,58 +82,60 @@ function block_average(
     x::AbstractVector{T};
     by = mean,
     min_block_size::Int = 1,
-    max_block_size::Int = length(x) ÷ 10,
+    max_block_size::Int = length(x),
+    lags::Union{Nothing,StepRange{Int}} = nothing,
 ) where {T<:Real}
 
     n = length(x)
 
-    xmean = T[]
-    xerr = T[]
-    sizes = Int[]
+    xmean = mean(x)
+    xmean_maxerr = T[]
+    xmean_stderr = T[]
+    blocksize = Int[]
 
     for block_size in min_block_size:max_block_size
         nblocks = n ÷ block_size
         remaining = n % block_size
-
-        # If the remaining is greater than the number of blocks, add
-        # some points to each block to maximize the use of the data
-        if remaining >= nblocks
-            block_size += remaining ÷ nblocks
-        end
-        nblocks = n ÷ block_size
-
-        # If the number of blocks didn't change, continue
-        if length(sizes) > 0 && nblocks == n ÷ sizes[end]
-            continue
+        if remaining != 0
+           continue
         end
 
         # Add new point to vectors
-        push!(sizes, block_size)
-        push!(xmean, zero(T))
-        push!(xerr, zero(T))
+        push!(blocksize, block_size)
+        push!(xmean_maxerr, zero(T))
+        push!(xmean_stderr, zero(T))
 
-        # Compute the property in each block
+        # Compute the property in each block, and keep the maximum error
+        diff_max = 0.
         for i in 1:nblocks
             xblock = @view x[brange(i, block_size)]
-            xmean[end] += by(xblock)
-        end
-        # Averaging over the number of blocks
-        xmean[end] /= nblocks
-
-        # Compute the standard deviation of the property estimate (σ²/√N)
-        if nblocks > 1
-            for i in 1:nblocks
-                xblock = @view x[brange(i, block_size)]
-                val = by(xblock)
-                xerr[end] += (val - xmean[end])^2
+            this_block_mean = by(xblock)
+            diff = abs(this_block_mean - xmean)
+            if diff > diff_max
+                diff_max = diff
+                xmean_maxerr[end] = 100*(this_block_mean - xmean) / xmean
             end
-            xerr[end] = sqrt(xerr[end] / ((nblocks - 1) * nblocks))
-        else
-            xerr[end] = 0.
+            # Compute the standard deviation of the property estimate (σ²/√N)
+            xmean_stderr[end] += (this_block_mean - xmean)^2
+        end
+        if nblocks > 1
+            xmean_stderr[end] = sqrt(xmean_stderr[end] / (nblocks - 1))
+            # We want the standard error, so
+            xmean_stderr[end] /= sqrt(nblocks)
         end
     end
 
-    return xmean, xerr, sizes
+    # Compute auto-correlation function of the data
+    auto_cor = autocor(x, lags)
+
+    return BlockAverageData{T}(
+        xmean,
+        blocksize,
+        xmean_maxerr,
+        xmean_stderr,
+        auto_cor
+    )
+
 end
 
 # Range of indices for block i of size block_size
@@ -129,6 +162,64 @@ function test_data(n)
         end
     end
     x
+end
+
+function plot(data::BlockAverageData; xlims=nothing, ylims=nothing)
+    Plots = Main.Plots
+    p = Plots.plot(layout=(3,1))
+    Plots.hline!(
+        [0],
+        linestyle=:dash,
+        alpha=0.5,
+        color=:black,
+        label=:none,
+    )
+    Plots.plot!(
+        data.blocksize, data.xmean_maxerr, 
+        ylabel="max. deviation (%)",
+        xlabel=L"\textrm{block~size~}(N)",
+        label=nothing,
+        linewidth=2,
+        marker=:circle,
+        color=:black,
+        xscale=:log10,
+        subplot=1
+    )
+    Plots.annotate!(
+        minimum(data.blocksize) + 0.1*minimum(data.blocksize),
+        maximum(data.xmean_maxerr) - 0.1*(maximum(data.xmean_maxerr)-minimum(data.xmean_maxerr)),
+        Plots.text("mean = $(round(data.xmean, digits=2))", "Computer Modern", 12, :left)
+    )
+    Plots.plot!(data.blocksize, data.xmean_stderr, 
+        ylabel=L"\sigma^2 / \sqrt{N}",
+        xlabel=L"\textrm{block~size~}(N)",
+        label=nothing,
+        linewidth=2,
+        marker=:circle,
+        color=:black,
+        xscale=:log10,
+        subplot=2
+    )
+    # Auto correlation function
+    Plots.plot!(data.autocor, 
+        ylabel=L"c(\Delta t)",
+        xlabel=L"\Delta t",
+        label=nothing,
+        linewidth=2,
+        color=:black,
+        subplot=3
+    )
+    Main.plot!(
+        p,
+        size=(400,600),
+        framestyle=:box,
+        fontfamily="Computer Modern",
+        xlims = xlims,
+        ylims = ylims,
+        leftmargin=0.5Plots.Measures.cm,
+        rightmargin=0.5Plots.Measures.cm,
+    )
+    return p
 end
 
 end # module

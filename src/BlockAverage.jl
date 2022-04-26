@@ -1,6 +1,8 @@
 
 module BlockAverage
 
+using Statistics: mean
+
 export block_average
 
 """
@@ -47,57 +49,56 @@ avg, err, sizes = block_average(x,by=func)
 """
 function block_average(
     x::AbstractVector{T};
-    by = x -> sum(x) / length(x),
+    by = mean,
     min_block_size::Int = 1,
     max_block_size::Int = length(x) ÷ 10,
 ) where {T<:Real}
 
     n = length(x)
 
-    xmean = Vector{T}(undef, 0)
-    xerr = Vector{T}(undef, 0)
-    sizes = Vector{Int}(undef, 0)
+    xmean = T[]
+    xerr = T[]
+    sizes = T[]
 
-    ib = 0
-    for block_size = min_block_size:max_block_size
-        ib += 1
+    for block_size in min_block_size:max_block_size
         nblocks = n ÷ block_size
         remaining = n % block_size
 
         # If the remaining is greater than the number of blocks, add
         # some points to each block to maximize the use of the data
-        block_size_final = block_size
         if remaining >= nblocks
-            block_size_final += remaining ÷ nblocks
+            block_size += remaining ÷ nblocks
         end
+        nblocks = n ÷ block_size
 
-        # If the block size turned out to be the same as the last one
-        # continue to next size
-        if ib > 1 && block_size_final == sizes[end]
+        # If the number of blocks didn't change, continue
+        if length(sizes) > 0 && nblocks == n ÷ sizes[end]
             continue
         end
 
         # Add new point to vectors
-        push!(sizes, block_size_final)
+        push!(sizes, block_size)
         push!(xmean, zero(T))
         push!(xerr, zero(T))
 
-        # Compute the mean of each block
-        for i = 1:nblocks
-            xblock = @view x[brange(i, block_size_final)]
-            val = by(xblock)
-            xmean[end] += val
+        # Compute the property in each block
+        for i in 1:nblocks
+            xblock = @view x[brange(i, block_size)]
+            xmean[end] += by(xblock)
         end
+        # Averaging over the number of blocks
+        xmean[end] /= nblocks
 
-        # Compute the standard deviation of the mean (σ²/√N)
+        # Compute the standard deviation of the property estimate (σ²/√N)
         if nblocks > 1
-            xmean[end] /= nblocks
-            for i = 1:nblocks
-                xblock = @view x[brange(i, block_size_final)]
+            for i in 1:nblocks
+                xblock = @view x[brange(i, block_size)]
                 val = by(xblock)
                 xerr[end] += (val - xmean[end])^2
             end
             xerr[end] = sqrt(xerr[end] / ((nblocks - 1) * nblocks))
+        else
+            xerr[end] = 0.
         end
     end
 
@@ -130,4 +131,4 @@ function test_data(n)
     x
 end
 
-end
+end # module

@@ -58,7 +58,7 @@ function block_average(
 
     xmean = T[]
     xerr = T[]
-    sizes = T[]
+    sizes = Int[]
 
     for block_size in min_block_size:max_block_size
         nblocks = n ÷ block_size

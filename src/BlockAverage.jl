@@ -45,89 +45,89 @@ avg, err, sizes = block_average(x,by=func)
 ```
 
 """
-function block_average(x::AbstractVector{T}; by = x -> sum(x)/length(x),
-                       min_block_size::Int = 1,
-                       max_block_size::Int = length(x)÷10) where T<:Real
+function block_average(
+    x::AbstractVector{T};
+    by = x -> sum(x) / length(x),
+    min_block_size::Int = 1,
+    max_block_size::Int = length(x) ÷ 10,
+) where {T<:Real}
 
-  n = length(x)
+    n = length(x)
 
-  xmean = Vector{T}(undef,0)
-  xerr = Vector{T}(undef,0)
-  sizes = Vector{Int}(undef,0)
+    xmean = Vector{T}(undef, 0)
+    xerr = Vector{T}(undef, 0)
+    sizes = Vector{Int}(undef, 0)
 
-  ib = 0
-  for block_size in min_block_size:max_block_size
-    ib += 1
-    nblocks = n÷block_size
-    remaining = n%block_size
+    ib = 0
+    for block_size = min_block_size:max_block_size
+        ib += 1
+        nblocks = n ÷ block_size
+        remaining = n % block_size
 
-    # If the remaining is greater than the number of blocks, add
-    # some points to each block to maximize the use of the data
-    block_size_final = block_size
-    if remaining >= nblocks
-      block_size_final += remaining÷nblocks
+        # If the remaining is greater than the number of blocks, add
+        # some points to each block to maximize the use of the data
+        block_size_final = block_size
+        if remaining >= nblocks
+            block_size_final += remaining ÷ nblocks
+        end
+
+        # If the block size turned out to be the same as the last one
+        # continue to next size
+        if ib > 1 && block_size_final == sizes[end]
+            continue
+        end
+
+        # Add new point to vectors
+        push!(sizes, block_size_final)
+        push!(xmean, zero(T))
+        push!(xerr, zero(T))
+
+        # Compute the mean of each block
+        for i = 1:nblocks
+            xblock = @view x[brange(i, block_size_final)]
+            val = by(xblock)
+            xmean[end] += val
+        end
+
+        # Compute the standard deviation of the mean (σ²/√N)
+        if nblocks > 1
+            xmean[end] /= nblocks
+            for i = 1:nblocks
+                xblock = @view x[brange(i, block_size_final)]
+                val = by(xblock)
+                xerr[end] += (val - xmean[end])^2
+            end
+            xerr[end] = sqrt(xerr[end] / ((nblocks - 1) * nblocks))
+        end
     end
 
-    # If the block size turned out to be the same as the last one
-    # continue to next size
-    if ib > 1 && block_size_final == sizes[end]
-      continue
-    end
-
-    # Add new point to vectors
-    push!(sizes,block_size_final)
-    push!(xmean,zero(T))
-    push!(xerr,zero(T))
-
-    # Compute the mean of each block
-    for i in 1:nblocks
-      xblock = @view x[brange(i,block_size_final)]
-      val = by(xblock)
-      xmean[end] += val
-    end
-   
-    # Compute the standard deviation of the mean (σ²/√N)
-    if nblocks > 1
-      xmean[end] /= nblocks
-      for i in 1:nblocks
-        xblock = @view x[brange(i,block_size_final)]
-        val = by(xblock)
-        xerr[end] += (val - xmean[end])^2 
-      end
-      xerr[end] = sqrt(xerr[end]/((nblocks-1)*nblocks))
-    end
-  end
-
-  return xmean, xerr, sizes
+    return xmean, xerr, sizes
 end
 
 # Range of indices for block i of size block_size
-function brange(i,block_size)
-  ifirst = (i-1)*block_size+1
-  ilast = ifirst + block_size - 1
-  return ifirst:ilast
+function brange(i, block_size)
+    ifirst = (i - 1) * block_size + 1
+    ilast = ifirst + block_size - 1
+    return ifirst:ilast
 end
 
 # Generate correlated data to test
 function test_data(n)
-  temperature = 1.
-  x = Vector{Float64}(undef,n)
-  x[1] = 0.
-  u = 0.
-  i = 1
-  while i < n
-    x_trial = x[i] - 0.1 + 0.2*rand()
-    u_trial = x_trial^2
-    if u_trial < u || exp((u-u_trial)/temperature) > 0.5
-      i += 1
-      x[i] = x_trial
-      u = u_trial
+    temperature = 1.0
+    x = Vector{Float64}(undef, n)
+    x[1] = 0.0
+    u = 0.0
+    i = 1
+    while i < n
+        x_trial = x[i] - 0.1 + 0.2 * rand()
+        u_trial = x_trial^2
+        if u_trial < u || exp((u - u_trial) / temperature) > 0.5
+            i += 1
+            x[i] = x_trial
+            u = u_trial
+        end
     end
-  end
-  x
+    x
 end
 
 end
-
-
-

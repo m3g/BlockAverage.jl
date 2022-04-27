@@ -66,7 +66,7 @@ function Base.show(io::IO,::MIME"text/plain",b::BlockAverageData)
              percentual: $((100/b.xmean)*(b.xmean_maxerr[end-2:end] .- b.xmean))  
                absolute: $((b.xmean_maxerr[end-2:end] .- b.xmean))  
 
-    Autocorrelation is first zero at step: $(findfirst(x -> x <=0, b.autocor))
+    Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
     Characteristic time of autocorrelation decay: 
             as fraction of series length: $(b.tau / length(b.x))
                                 absolute: $(b.tau)
@@ -191,7 +191,7 @@ function block_average(
         auto_cor = autocor(x, lags)
     end
 
-    tau = fitexp(1:length(auto_cor), auto_cor, c=0., u=upper(a=1.1), l=lower(a=0.9)).b
+    tau = fitexp(lags, auto_cor, c=0., u=upper(a=1.1), l=lower(a=0.9)).b
 
     return BlockAverageData{T}(
         x,
@@ -309,7 +309,9 @@ function plot(
         subplot=2
     )
     # Auto correlation function
-    Plots.plot!(data.autocor, 
+    Plots.plot!(
+        data.lags,
+        data.autocor, 
         ylabel=L"c(\Delta t)",
         xlabel=L"\Delta t",
         label=nothing,
@@ -318,7 +320,8 @@ function plot(
         subplot=3
     )
     Plots.plot!(
-        exp.(-inv(data.tau) * (0:length(data.autocor))),
+        data.lags,
+        exp.(-inv(data.tau) .* data.lags),
         label=nothing,
         linewidth=2,
         color=:black,
@@ -326,7 +329,7 @@ function plot(
         subplot=3,
     )
     Plots.annotate!(
-        length(data.autocor) - 0.2*length(data.autocor),
+        data.lags[end] - 0.2*data.lags[end],
         0.80,
         Plots.text("τ = $(round(data.tau, digits=2))", "Computer Modern", 12, :right),
         subplot=3,

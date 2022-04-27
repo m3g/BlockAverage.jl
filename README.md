@@ -110,7 +110,7 @@ Note that we have adjusted the range of `lags` of the autocorrelation function i
 Several characteristics of the output indicate the poor convergence of the series: 1) The mean should be `0.` for this property; 2) the maximum standard error occurs with a block size which is half the length of the series (there is no plateau); 3) the standard error of the mean is of the order of the mean value; 4) The autocorrelation is first zero at ~20% of the length of the data set. 
 
 The corresponding plot is obtained with:
-```julia-repl
+```julia
 julia> using Plots
 
 julia> BlockAverage.plot(b, title="Bad sampling")
@@ -130,7 +130,7 @@ The obtained set is now much better sampled,
 ![good_sampling.png](./docs/images/good_sampling.png)
 
 The convergence analysis of the series produces:
-```julia-repl
+```julia
 julia> b = block_average(x, lags=1:100:10^5)
 -------------------------------------------------------------------
 BlockAverageData{Float64}
@@ -157,7 +157,7 @@ Note that the average value of `x` here is closer to zero, and that the maximum 
 
 The corresponding plots are:
 
-```julia-repl
+```julia
 julia> using Plots
 
 julia> BlockAverage.plot(b, title="Good sampling")

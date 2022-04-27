@@ -11,8 +11,9 @@ decay.
 
 Install with
 ```julia
-julia> ] add https://github.com/m3g/BlockAverage.jl
+julia> import Pkg
 
+julia> Pkg.add(url="https://github.com/m3g/BlockAverage.jl")
 ```
 
 Help entries are available with:
@@ -57,7 +58,6 @@ Characteristic time of autocorrelation decay:
 julia> using Plots
 
 julia> BlockAverage.plot(b, title="Uncorrelated data")
-
 ```
 
 Results in:
@@ -72,9 +72,8 @@ Thus, the worst block estimate converges very rapidly to the true mean, the stan
 
 The data above is not correlated in the input `x` vector. If the data is correlated, one can observe that in the dependence of the estimates of the average and error from the data. One can generate a test data (sort of a monte-carlo simulation of a particle in an harmonic well) using:
 
-```
+```julia
 julia> x = BlockAverage.test_data(1_000);
-
 ```
 Which in this run produced:
 

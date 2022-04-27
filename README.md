@@ -121,7 +121,7 @@ julia> BlockAverage.plot(b, title="Bad sampling")
 #### Properly sampled data
 
 If we increase the sampling by generating longer simulation:
-```
+```julia
 julia> x = BlockAverage.test_data(10^6);
 ```
 

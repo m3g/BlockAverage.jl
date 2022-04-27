@@ -20,10 +20,11 @@ Structure that contains the result of the block-average analysis of the sequence
 
 `blocksize` is an array of block sizes, in which the data was split. 
 By default it goes from `1` to `length(x)`, with a number of points corresponding to the
-number of integer divisions of `lenth(x)`.
+number of integer divisions of `length(x)`.
 
 `xmean_maxerr`: The property is computed for each block, and the maximum error (difference
-between the property in the block and the average property) is stored in this array.
+between the property in the block and the average property) is stored in this array, for
+each blocks size. 
 
 `xmean_stderr`: The standard error of the estimates of the property, meaning the standar 
 deviation of the estimates divided by the square root of the number of blocks. 
@@ -106,13 +107,33 @@ further information.
 ## Example
 
 ```julia-repl
-julia> x = BlockAverage.test_data(10^6);
+julia> x = BlockAverage.test_data(10^6); # example data generator
 
-julia> b = block_average(x, lags=0:100:10^5);
+julia> b = block_average(x, lags=0:100:10^5)
+-------------------------------------------------------------------
+BlockAverageData{Float64}
+-------------------------------------------------------------------
+Estimated value (mean by default) = -0.07941666750957592
+Length of data series: 1000000
+
+Block size ranges: (1, 1000000)
+
+Maximum standard error (error, block size): (0.22783752512097308, 40000)
+
+Deviations in last 3 blocks:
+         percentual: [188.6496035297814, -22.9503589818173, -0.0]  
+           absolute: [-0.1498192283933797, 0.01822641028484394, 0.0]  
+
+Autocorrelation is first zero at step: 145
+Characteristic time of autocorrelation decay: 
+        as fraction of series length: 4.537259628690915e-5
+                            absolute: 45.37259628690915
+-------------------------------------------------------------------
 
 julia> using Plots
 
-julia> BlockAverage.plot(b)
+julia> BlockAverage.plot(b) # creates a plot with the results
+
 ```
 """
 function block_average(
@@ -125,7 +146,7 @@ function block_average(
 
     n = length(x)
 
-    xmean = mean(x)
+    xmean = by(x)
     xmean_maxerr = T[]
     xmean_stderr = T[]
     blocksize = Int[]

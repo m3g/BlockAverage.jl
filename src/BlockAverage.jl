@@ -14,6 +14,8 @@ $(TYPEDEF)
 
 Structure that contains the result of the block-average analysis of the sequence. 
 
+`x` is the original data set. 
+
 `xmean` is the property value computed for all data (usually the mean, but not necessarily)
 
 `blocksize` is an array of block sizes, in which the data was split. 
@@ -28,57 +30,90 @@ deviation of the estimates divided by the square root of the number of blocks.
 
 `autocor`: Is the autocorrelation function of the data, as a function of the lag. 
 
+`lags`: Is the set of "time" lags for which the autocorrelation will be computed. Defined by
+the `lags` parameter of the `block_average` function, as a range. 
+
+`tau`: The characteristic decay time of the autocorrelation function, as obtained by fitting
+of a single exponential, of the form `exp(-t/tau)` to the data. 
+
 """
 struct BlockAverageData{T}
+    x::Vector{T}
     xmean::T
     blocksize::Vector{Int}
     xmean_maxerr::Vector{T}
     xmean_stderr::Vector{T}
+    lags::AbstractVector{Int}
     autocor::Vector{T}
     tau::T
+end
+
+function Base.show(io::IO,::MIME"text/plain",b::BlockAverageData)
+    merr = findmax(b.xmean_stderr)
+    print(io, """
+    -------------------------------------------------------------------
+    $(typeof(b))
+    -------------------------------------------------------------------
+    Estimated value (mean by default) = $(b.xmean)
+    Length of data series: $(length(b.x))
+
+    Block size ranges: $(extrema(b.blocksize))
+
+    Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
+
+    Deviations in last 3 blocks:
+             percentual: $((100/b.xmean)*(b.xmean_maxerr[end-2:end] .- b.xmean))  
+               absolute: $((b.xmean_maxerr[end-2:end] .- b.xmean))  
+
+    Autocorrelation is first zero at step: $(findfirst(x -> x <=0, b.autocor))
+    Characteristic time of autocorrelation decay: 
+            as fraction of series length: $(b.tau / length(b.x))
+                                absolute: $(b.tau)
+    -------------------------------------------------------------------
+    """)
 end
 
 """
 
 ```
-block_average(x::AbstractVector{T}, by = mean) where T<:Real
+block_average(
+    x::AbstractVector{T};
+    by = mean,
+    min_block_size::Int = 1,
+    max_block_size::Int = length(x),
+    lags::Union{Nothing,AbstractVector{Int}} = nothing,
+) where {T<:Real}
 ```
 
-Function that computes the block average and standard deviation as a function of block size for a time-dependent, possibly correlated, set of data.
+This function peforms some convergence analysis for a property computed from a series of data, typically a time-series. 
+The data is given in vector `x`, and `by` defines the property to be estimated, typically, and by default, the mean value.
 
-Returns three vectors `avg`, `err`, and `sizes`.  The output `avg` and `err` vectors will contain the estimate of the mean value of the property and the *standard deviation of the mean,* for each possible block size (stored in `sizes`). Thus, `avg[i]` for `sizes[i] = N` will contain the mean of `by(x)` computed for blocks of `x` of length `N` (thus, with `length(x)÷N` samples).
+Two analyses are performed: a block averaging, in which the data is split in to blocks, and the mean value (or `by` value)
+in each block is computed idependently. The output will contain the worst estimate obtained for all blocks, and the
+standard error of the estimates, as a function of the block size. 
 
-The function defined by `by=` must be able to operate on a `view` of a subvector of `x`.  By default, `x` is assumed to contain the value of the property to be considered, and then `by = mean`. Nevertheless, one could compute other property from `x`.
+Finally, the autocorrelation function of the data is computed, and a single exponential is fitted, to obtain the
+characteristic time of the decay of the correlation. 
 
-Call with complete set of parameters:
+The output will be a structure of type `BlockAverageData{T}`. See the corresponding help entry for more information.
 
-```julia
-avg, err, sizes = block_average(x::AbstractVector{T}; by = mean, 
-                                max_block_size::Int = length(x)÷10, 
-                                min_block_size::Int = 1 ) where T<:Real
+All results can be plot with a convenience function `BlockAverage.plot`
+
+The `lags` keyword can be tuned to define the range of intervals and length of the autocorrelation calculation, with
+important implications to the exponential fit and correlation curve shape. See the `StatsBase.autocor` help for 
+further information.
+
+## Example
+
+```julia-repl
+julia> x = BlockAverage.test_data(10^6);
+
+julia> b = block_average(x, lags=0:100:10^5);
+
+julia> using Plots
+
+julia> BlockAverage.plot(b)
 ```
-
-## Examples
-
-With `x = rand(1000)`:
-
-1. `x` contains directly the property to be estimated:
-```julia
-avg, err, sizes = block_average(x)
-```
-
-2. The property to be estimated is the average of the square of each `x`:
-```julia
-func(x) = sum(x.^2)/length(x)
-avg, err, sizes = block_average(x,by=func)
-```
-
-3. The property is the probabilty of finding an element of `x` greater than `0.5`:
-```julia
-func(x) = count( x .> 0.5 ) / length(x)
-avg, err, sizes = block_average(x,by=func)
-```
-
 """
 function block_average(
     x::AbstractVector{T};
@@ -129,6 +164,7 @@ function block_average(
 
     # Compute auto-correlation function of the data
     if isnothing(lags)
+        lags =  0:round(Int,min(size(x,1)-1, 10*log10(size(x,1))))
         auto_cor = autocor(x)
     else
         auto_cor = autocor(x, lags)
@@ -137,10 +173,12 @@ function block_average(
     tau = fitexp(1:length(auto_cor), auto_cor, c=0., u=upper(a=1.1), l=lower(a=0.9)).b
 
     return BlockAverageData{T}(
+        x,
         xmean,
         blocksize,
         xmean_maxerr,
         xmean_stderr,
+        lags,
         auto_cor,
         tau 
     )
@@ -173,6 +211,37 @@ function test_data(n)
     x
 end
 
+"""
+
+```
+plot(
+    data::BlockAverageData; 
+    xlims=nothing, 
+    ylims=nothing,
+    xscale=:identity,
+    title="",
+)
+```
+
+Function that creates a plot of output data from `block_average`. The optional 
+`xlims`, `ylims`, `xscale`, `title`, can be set to adjust the aparency of the plot.    
+
+The function requires `Plots` to be loaded first, as it is not an explict dependency
+of the `BlockAverage` package.
+
+## Example
+
+```julia-repl
+julia> x = BlockAverage.test_data(10^6);
+
+julia> b = block_average(x, lags=0:100:10^5);
+
+julia> using Plots
+
+julia> BlockAverage.plot(b)
+```
+
+"""
 function plot(
     data::BlockAverageData; 
     xlims=nothing, 

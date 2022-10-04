@@ -265,8 +265,8 @@ julia> BlockAverage.plot(b)
 """
 function plot(
     data::BlockAverageData; 
-    xlims=nothing, 
-    ylims=nothing,
+    xlims=:auto, 
+    ylims=:auto,
     xscale=:identity,
     title="",
 )
@@ -319,9 +319,10 @@ function plot(
         color=:black,
         subplot=3
     )
+    exp_fit = exp.(-inv(data.tau) .* data.lags)
     Plots.plot!(
         data.lags,
-        exp.(-inv(data.tau) .* data.lags),
+        exp_fit,
         label=nothing,
         linewidth=2,
         color=:black,
@@ -330,7 +331,7 @@ function plot(
     )
     Plots.annotate!(
         data.lags[end] - 0.2*data.lags[end],
-        0.80,
+        0.8*max(maximum(data.autocor),maximum(exp_fit)),
         Plots.text("τ = $(round(data.tau, digits=2))", "Computer Modern", 12, :right),
         subplot=3,
     )

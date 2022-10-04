@@ -40,13 +40,21 @@ of a single exponential, of the form `exp(-t/tau)` to the data.
 """
 struct BlockAverageData{T}
     x::Vector{T}
-    xmean::T
+    xmean::Float64
     blocksize::Vector{Int}
-    xmean_maxerr::Vector{T}
-    xmean_stderr::Vector{T}
+    xmean_maxerr::Vector{Float64}
+    xmean_stderr::Vector{Float64}
     lags::AbstractVector{Int}
-    autocor::Vector{T}
-    tau::T
+    autocor::Vector{Float64}
+    tau::Float64
+end
+
+function _print_block_sizes(blocksize)
+    if length(blocksize) < 5
+        "[$(join(blocksize, ", "))]"
+    else
+        "[$(blocksize[1]), $(blocksize[2]), ..., $(blocksize[end-1]), $(blocksize[end])]"
+    end
 end
 
 function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
@@ -58,7 +66,7 @@ function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
               Estimated value (mean by default) = $(b.xmean)
               Length of data series: $(length(b.x))
               
-              Block size ranges: $(extrema(b.blocksize))
+              Block sizes: $(_print_block_sizes(b.blocksize))
               
               Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
               
@@ -114,21 +122,21 @@ julia> b = block_average(x, lags=0:100:10^5)
 -------------------------------------------------------------------
 BlockAverageData{Float64}
 -------------------------------------------------------------------
-Estimated value (mean by default) = -0.07941666750957592
+Estimated value (mean by default) = -0.13673023261452855
 Length of data series: 1000000
 
-Block size ranges: (1, 1000000)
+Block sizes: [1, 2, ..., 500000, 1000000]
 
-Maximum standard error (error, block size): (0.22783752512097308, 40000)
+Maximum standard error (error, block size): (0.23264202379194165, 500000)
 
 Deviations in last 3 blocks:
-         percentual: [188.6496035297814, -22.9503589818173, -0.0]  
-           absolute: [-0.1498192283933797, 0.01822641028484394, 0.0]  
+         percentual: [-349.5348293165444, -170.1467329817311, -0.0]  
+           absolute: [0.47791978519330647, 0.23264202379194168, 0.0]  
 
-Autocorrelation is first zero at step: 145
+Autocorrelation is first zero with lag: 16400
 Characteristic time of autocorrelation decay: 
-        as fraction of series length: 4.537259628690915e-5
-                            absolute: 45.37259628690915
+        as fraction of series length: 0.0037856443348888848
+                            absolute: 3785.6443348888847
 -------------------------------------------------------------------
 
 julia> using Plots
@@ -141,10 +149,14 @@ function block_average(
     x_input::AbstractVector{T};
     by=mean,
     min_block_size::Int=1,
-    max_block_size::Int=length(x),
+    max_block_size::Int=length(x_input),
     lags::Union{Nothing,AbstractVector{Int}}=nothing
 ) where {T<:Real}
 
+    if length(x_input) < max_block_size
+        throw(ArgumentError("number of data points must be greater than max_block_size"))
+    end
+    
     if length(x_input) % max_block_size != 0
         x = x_input[firstindex(x_input):lastindex(x_input)-length(x_input)%max_block_size]
         println("""
@@ -164,8 +176,8 @@ function block_average(
 
     n = length(x)
     xmean = by(x)
-    xmean_maxerr = T[]
-    xmean_stderr = T[]
+    xmean_maxerr = Float64[]
+    xmean_stderr = Float64[]
     blocksize = Int[]
 
     for block_size in min_block_size:max_block_size

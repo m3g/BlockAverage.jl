@@ -63,8 +63,8 @@ function Base.show(io::IO,::MIME"text/plain",b::BlockAverageData)
     Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
 
     Deviations in last 3 blocks:
-             percentual: $((100/b.xmean)*(b.xmean_maxerr[end-2:end] .- b.xmean))  
-               absolute: $((b.xmean_maxerr[end-2:end] .- b.xmean))  
+             percentual: $((100/b.xmean)*(b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
+               absolute: $((b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
 
     Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
     Characteristic time of autocorrelation decay: 
@@ -137,15 +137,31 @@ julia> BlockAverage.plot(b) # creates a plot with the results
 ```
 """
 function block_average(
-    x::AbstractVector{T};
+    x_input::AbstractVector{T};
     by = mean,
     min_block_size::Int = 1,
     max_block_size::Int = length(x),
     lags::Union{Nothing,AbstractVector{Int}} = nothing,
 ) where {T<:Real}
 
-    n = length(x)
+    if length(x_input) % max_block_size != 0
+        x = x_input[firstindex(x_input): lastindex(x_input) - length(x_input) % max_block_size]  
+        println("""
 
+        WARNING: number of data points is not a multiple of max_block_size.
+
+                This may cause poor block sampling, because the analysis
+                is performed only for sets of blocks that encompass to complete
+                data set. 
+
+                >> Only the first $(length(x)) data points will be considered.
+
+        """)
+    else
+        x = x_input
+    end
+
+    n = length(x)
     xmean = by(x)
     xmean_maxerr = T[]
     xmean_stderr = T[]

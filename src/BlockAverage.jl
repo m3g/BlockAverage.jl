@@ -49,29 +49,30 @@ struct BlockAverageData{T}
     tau::T
 end
 
-function Base.show(io::IO,::MIME"text/plain",b::BlockAverageData)
+function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
     merr = findmax(b.xmean_stderr)
     print(io, """
-    -------------------------------------------------------------------
-    $(typeof(b))
-    -------------------------------------------------------------------
-    Estimated value (mean by default) = $(b.xmean)
-    Length of data series: $(length(b.x))
-
-    Block size ranges: $(extrema(b.blocksize))
-
-    Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
-
-    Deviations in last 3 blocks:
-             percentual: $((100/b.xmean)*(b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
-               absolute: $((b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
-
-    Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
-    Characteristic time of autocorrelation decay: 
-            as fraction of series length: $(b.tau / length(b.x))
-                                absolute: $(b.tau)
-    -------------------------------------------------------------------
-    """)
+              -------------------------------------------------------------------
+              $(typeof(b))
+              -------------------------------------------------------------------
+              Estimated value (mean by default) = $(b.xmean)
+              Length of data series: $(length(b.x))
+              
+              Block size ranges: $(extrema(b.blocksize))
+              
+              Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
+              
+              Deviations in last 3 blocks:
+                       percentual: $((100/b.xmean)*(b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
+                         absolute: $((b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
+              
+              Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
+              Characteristic time of autocorrelation decay: 
+                      as fraction of series length: $(b.tau / length(b.x))
+                                          absolute: $(b.tau)
+              -------------------------------------------------------------------
+              """
+    )
 end
 
 """
@@ -138,14 +139,14 @@ julia> BlockAverage.plot(b) # creates a plot with the results
 """
 function block_average(
     x_input::AbstractVector{T};
-    by = mean,
-    min_block_size::Int = 1,
-    max_block_size::Int = length(x),
-    lags::Union{Nothing,AbstractVector{Int}} = nothing,
+    by=mean,
+    min_block_size::Int=1,
+    max_block_size::Int=length(x),
+    lags::Union{Nothing,AbstractVector{Int}}=nothing
 ) where {T<:Real}
 
     if length(x_input) % max_block_size != 0
-        x = x_input[firstindex(x_input): lastindex(x_input) - length(x_input) % max_block_size]  
+        x = x_input[firstindex(x_input):lastindex(x_input)-length(x_input)%max_block_size]
         println("""
 
         WARNING: number of data points is not a multiple of max_block_size.
@@ -171,7 +172,7 @@ function block_average(
         nblocks = n ÷ block_size
         remaining = n % block_size
         if remaining != 0
-           continue
+            continue
         end
 
         # Add new point to vectors
@@ -180,7 +181,7 @@ function block_average(
         push!(xmean_stderr, zero(T))
 
         # Compute the property in each block, and keep the maximum error
-        diff_max = -Inf 
+        diff_max = -Inf
         for i in 1:nblocks
             xblock = @view x[brange(i, block_size)]
             this_block_mean = by(xblock)
@@ -201,13 +202,13 @@ function block_average(
 
     # Compute auto-correlation function of the data
     if isnothing(lags)
-        lags =  0:round(Int,min(size(x,1)-1, 10*log10(size(x,1))))
+        lags = 0:round(Int, min(size(x, 1) - 1, 10 * log10(size(x, 1))))
         auto_cor = autocor(x)
     else
         auto_cor = autocor(x, lags)
     end
 
-    tau = fitexp(lags, auto_cor, c=0., u=upper(a=1.1), l=lower(a=0.9)).b
+    tau = fitexp(lags, auto_cor, c=0.0, u=upper(a=1.1), l=lower(a=0.9)).b
 
     return BlockAverageData{T}(
         x,
@@ -217,7 +218,7 @@ function block_average(
         xmean_stderr,
         lags,
         auto_cor,
-        tau 
+        tau
     )
 
 end
@@ -280,14 +281,14 @@ julia> BlockAverage.plot(b)
 
 """
 function plot(
-    data::BlockAverageData; 
-    xlims=:auto, 
+    data::BlockAverageData;
+    xlims=:auto,
     ylims=:auto,
     xscale=:identity,
-    title="",
+    title=""
 )
     Plots = Main.Plots
-    p = Plots.plot(layout=(3,1))
+    p = Plots.plot(layout=(3, 1))
     Plots.hline!(
         [data.xmean],
         linestyle=:dash,
@@ -298,7 +299,7 @@ function plot(
         subplot=1,
     )
     Plots.plot!(
-        data.blocksize, data.xmean_maxerr, 
+        data.blocksize, data.xmean_maxerr,
         ylabel="worst block value",
         xlabel=L"\textrm{block~size~}(N)",
         label=nothing,
@@ -309,12 +310,12 @@ function plot(
         subplot=1
     )
     Plots.annotate!(
-        maximum(data.blocksize) - 0.1*maximum(data.blocksize),
-        maximum(data.xmean_maxerr) - 0.1*(maximum(data.xmean_maxerr)-minimum(data.xmean_maxerr)),
+        maximum(data.blocksize) - 0.1 * maximum(data.blocksize),
+        maximum(data.xmean_maxerr) - 0.1 * (maximum(data.xmean_maxerr) - minimum(data.xmean_maxerr)),
         Plots.text("mean = $(round(data.xmean, digits=2))", "Computer Modern", 12, :right),
         subplot=1,
     )
-    Plots.plot!(data.blocksize, data.xmean_stderr, 
+    Plots.plot!(data.blocksize, data.xmean_stderr,
         ylabel=L"\sigma^2 / \sqrt{N}",
         xlabel=L"\textrm{block~size~}(N)",
         label=nothing,
@@ -327,7 +328,7 @@ function plot(
     # Auto correlation function
     Plots.plot!(
         data.lags,
-        data.autocor, 
+        data.autocor,
         ylabel=L"c(\Delta t)",
         xlabel=L"\Delta t",
         label=nothing,
@@ -346,18 +347,18 @@ function plot(
         subplot=3,
     )
     Plots.annotate!(
-        data.lags[end] - 0.2*data.lags[end],
-        0.8*max(maximum(data.autocor),maximum(exp_fit)),
+        data.lags[end] - 0.2 * data.lags[end],
+        0.8 * max(maximum(data.autocor), maximum(exp_fit)),
         Plots.text("τ = $(round(data.tau, digits=2))", "Computer Modern", 12, :right),
         subplot=3,
     )
     Main.plot!(
         p,
-        size=(400,600),
+        size=(400, 600),
         framestyle=:box,
         fontfamily="Computer Modern",
-        xlims = xlims,
-        ylims = ylims,
+        xlims=xlims,
+        ylims=ylims,
         leftmargin=0.5Plots.Measures.cm,
         rightmargin=0.5Plots.Measures.cm,
     )

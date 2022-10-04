@@ -158,7 +158,7 @@ function block_average(
     end
     
     if length(x_input) % max_block_size != 0
-        x = x_input[firstindex(x_input):lastindex(x_input)-length(x_input)%max_block_size]
+        x = @view(x_input[firstindex(x_input):lastindex(x_input)-length(x_input)%max_block_size])
         println("""
 
         WARNING: number of data points is not a multiple of max_block_size.

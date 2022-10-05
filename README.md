@@ -130,25 +130,25 @@ The obtained set is now much better sampled,
 
 The convergence analysis of the series produces:
 ```julia
-julia> b = block_average(x, lags=1:100:10^5)
+julia> b = block_average(x, lags=1:100:10^5, max_block_size=10^5)
 -------------------------------------------------------------------
 BlockAverageData{Float64}
 -------------------------------------------------------------------
-Estimated value (mean by default) = -0.27183400739040475
+Estimated value (mean by default) = -0.05498853009368246
 Length of data series: 1000000
 
-Block size ranges: (1, 1000000)
+Block sizes: [1, 2, ..., 62500, 100000]
 
-Maximum standard error (error, block size): (0.20031693993066216, 100000)
+Maximum standard error (error, block size): (0.18706372724807982, 31250)
 
 Deviations in last 3 blocks:
-         percentual: [42.60276435944698, 0.08192330915966697, -0.0]  
-           absolute: [-0.11580880161737583, -0.00022269541427555328, 0.0]  
+         percentual: [-2805.4693758538297, -2600.14341058853, -1393.4253407524507]  
+           absolute: [1.5426863720104287, 1.4297806418103753, 0.7662241128326587]  
 
-Autocorrelation is first zero with lag: 9401
+Autocorrelation is first zero with lag: 14701
 Characteristic time of autocorrelation decay: 
-        as fraction of series length: 0.0032460464542995214
-                            absolute: 3246.0464542995214
+        as fraction of series length: 0.0036203287638847167
+                            absolute: 3620.328763884717
 -------------------------------------------------------------------
 ```
 
@@ -180,28 +180,33 @@ julia> BlockAverage.plot(b)
 
 (here we have computed the statistics only up to blocks of size `10^5`)
 
+## Visualizing the distribution of the mean
 
+Once the overall correlation is understood from the time-series block analysis, one can 
+visualize the distribution of the computed value (the mean in general) for a given
+block size. A relatively good fit to a gaussian distribution is expected. For instance,
+let us choose a block size of `25_000`, from a set similar to the one above:
 
+```julia
+julia> x = BlockAverage.test_data(10^7) 
 
+julia> d = distribution(x, 25_000)
+-------------------------------------------------------------------
+MeanDistribution{400}
+-------------------------------------------------------------------
+Number of blocks: 400
+Estimated value: = 0.06462623778329132
+Standard error of the mean: 0.05641314321229929
+Standard deviation of the mean: 1.1282628642459858
+> block_mean contains the mean computed for each block.
+-------------------------------------------------------------------
 
+julia> BlockAverage.histogram(d)
+```
 
+The last command will produce a plot similar to the following, in which the histogram
+of values is shown side by side with the gaussian function that corresponds to the 
+observed standard deviation and mean.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+![best_sampling.png](./docs/images/mean_distribution.svg)
 

@@ -7,6 +7,7 @@ using StatsBase
 using EasyFit
 
 export block_average, BlockAverageData
+export distribution, MeanDistribution
 
 """
 
@@ -83,6 +84,33 @@ function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
     )
 end
 
+#
+# Checks if the length of the data is a multiple of block_size, and if not adjust
+# the length and print a warning
+#
+function adjust_xinput(x_input, block_size, var="max_block_size")
+    if length(x_input) < block_size
+        throw(ArgumentError("number of data points must be greater than $var"))
+    end
+    if length(x_input) % block_size != 0
+        x = @view(x_input[firstindex(x_input):lastindex(x_input)-length(x_input)%block_size])
+        println("""
+
+        WARNING: number of data points is not a multiple of $var.
+
+                This may cause poor block sampling, because the analysis
+                is performed only for sets of blocks that encompass to complete
+                data set. 
+
+                >> Only the first $(length(x)) data points will be considered.
+
+        """)
+    else
+        x = x_input
+    end
+    return x
+end
+
 """
 
 ```
@@ -153,26 +181,7 @@ function block_average(
     lags::Union{Nothing,AbstractVector{Int}}=nothing
 ) where {T<:Real}
 
-    if length(x_input) < max_block_size
-        throw(ArgumentError("number of data points must be greater than max_block_size"))
-    end
-    
-    if length(x_input) % max_block_size != 0
-        x = @view(x_input[firstindex(x_input):lastindex(x_input)-length(x_input)%max_block_size])
-        println("""
-
-        WARNING: number of data points is not a multiple of max_block_size.
-
-                This may cause poor block sampling, because the analysis
-                is performed only for sets of blocks that encompass to complete
-                data set. 
-
-                >> Only the first $(length(x)) data points will be considered.
-
-        """)
-    else
-        x = x_input
-    end
+    x = adjust_xinput(x_input, max_block_size)
 
     n = length(x)
     xmean = by(x)
@@ -234,6 +243,91 @@ function block_average(
     )
 
 end
+
+struct MeanDistribution{N}
+    mean::Float64
+    std_of_the_mean::Float64
+    block_mean::Vector{Float64}
+    std_err_of_the_mean::Float64
+end
+function Base.show(io::IO, ::MIME"text/plain", m::MeanDistribution)
+    print(io, """
+              -------------------------------------------------------------------
+              $(typeof(m))
+              -------------------------------------------------------------------
+              Number of blocks: $(length(m.block_mean))
+              Estimated value: = $(m.mean)
+              Standard error of the mean: $(m.std_err_of_the_mean)
+              Standard deviation of the mean: $(m.std_of_the_mean)
+              > block_mean contains the mean computed for each block.
+              -------------------------------------------------------------------
+              """
+    )
+end
+
+function histogram(md::MeanDistribution; bins=:auto)
+    Plots = Main.Plots
+    p = Plots.plot(
+        size=(400, 300),
+        framestyle=:box,
+        fontfamily="Computer Modern",
+        leftmargin=0.5Plots.Measures.cm,
+        rightmargin=0.5Plots.Measures.cm,
+        xlabel="value",
+        ylabel="density"
+    )
+    Plots.histogram!(p, md.block_mean, bins=bins, normalize=:pdf, color=:gray,label=:none)
+    σ = md.std_of_the_mean^2
+    Plots.plot!(p, x -> (1/sqrt(π*σ))*exp(-(x-md.mean)^2/σ), linewidth=2, color=:black, label=:none)
+    return p
+end
+
+"""
+    distribution(x_input::AbstractVector, block_size) = distribution(mean, x_input, block_size)
+    distribution(by::Function, x_input::AbstractVector, block_size)
+
+Given the data and the block size, computes the distribution of estimates of the 
+properties for each block. Returns a `MeanDistribution{NBLOCKS}` object.
+
+# Example
+
+```julia-repl
+julia> x = BlockAverage.test_data(10^7);
+
+julia> d = distribution(x, 2.5e4)
+-------------------------------------------------------------------
+MeanDistribution{400}
+-------------------------------------------------------------------
+Number of blocks: 400
+Estimated value: = 0.025151622077551537
+Standard error of the mean: 0.05596145099711976
+Standard deviation of the mean: 1.119229019942395
+> block_mean contains the mean computed for each block.
+-------------------------------------------------------------------
+```
+
+The distribution is stored in the `d.block_mean` vector, and can be plotted with:
+```julia-repl
+julia> using Plots
+
+julia> BlockAverage.histogram(d)
+```
+
+"""
+function distribution(by::Function, x_input::AbstractVector, block_size)
+    block_size = Int(block_size)
+    x = adjust_xinput(x_input, block_size, "block_size") 
+    n = length(x)
+    nblocks = n ÷ block_size
+    block_mean = fill(0.0, nblocks)
+    # Compute the property in each block
+    for i in 1:nblocks
+        xblock = @view x[brange(i, block_size)]
+        block_mean[i] = by(xblock) 
+    end
+    return MeanDistribution{nblocks}(mean(x), std(block_mean), block_mean, std(block_mean)/sqrt(nblocks))
+end
+distribution(x_input::AbstractVector, block_size) = distribution(mean, x_input, block_size)
 
 # Range of indices for block i of size block_size
 function brange(i, block_size)
@@ -323,7 +417,7 @@ function plot(
     )
     Plots.annotate!(
         maximum(data.blocksize) - 0.1 * maximum(data.blocksize),
-        maximum(data.xmean_maxerr) - 0.1 * (maximum(data.xmean_maxerr) - minimum(data.xmean_maxerr)),
+        max(data.xmean_maxerr[end],maximum(data.xmean_maxerr)) - 0.1 * (maximum(data.xmean_maxerr) - minimum(data.xmean_maxerr)),
         Plots.text("mean = $(round(data.xmean, digits=2))", "Computer Modern", 12, :right),
         subplot=1,
     )

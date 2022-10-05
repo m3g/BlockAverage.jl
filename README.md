@@ -21,6 +21,8 @@ Help entries are available with:
 julia> ? block_average
 
 julia> ? BlockAverageData
+
+julia> ? distribution
 ```
 
 ## Examples:
@@ -209,4 +211,6 @@ of values is shown side by side with the gaussian function that corresponds to t
 observed standard deviation and mean.
 
 ![best_sampling.png](./docs/images/mean_distribution.svg)
+
+The optimal block size should be that for which the distribution is closer to a gaussian.
 

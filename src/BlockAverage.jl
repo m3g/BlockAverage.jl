@@ -244,6 +244,13 @@ function block_average(
 
 end
 
+"""
+
+$(TYPEDEF)
+
+$(TYPEDFIELDS)
+
+"""
 struct MeanDistribution{N}
     mean::Float64
     std_of_the_mean::Float64
@@ -256,7 +263,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::MeanDistribution)
               $(typeof(m))
               -------------------------------------------------------------------
               Number of blocks: $(length(m.block_mean))
-              Estimated value: = $(m.mean)
+              Estimated mean: = $(m.mean)
               Standard error of the mean: $(m.std_err_of_the_mean)
               Standard deviation of the mean: $(m.std_of_the_mean)
               > block_mean contains the mean computed for each block.

@@ -7,8 +7,6 @@ Computes the block average of time-dependent data, to compute the standard error
 The package also outputs the autocorrelation function of the property, and the characteristic time of the correlation
 decay. 
 
-[Instalation](@ref)
-
 ## Instalation
 
 Install with

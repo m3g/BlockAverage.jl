@@ -7,7 +7,16 @@ Computes the block average of time-dependent data, to compute the standard error
 The package also outputs the autocorrelation function of the property, and the characteristic time of the correlation
 decay. 
 
-## Instalation
+## Contents
+
+- [Installation](#installation)
+- [Examples](#examples)
+    - [Series without time correlation](#data-that-is-not-time-correlated)
+    - [Series with correlation and bad sampling](#poorly-sampled-data)
+    - [Series with correlation and good sampling](#properly-sampled-data)
+- [Distribution of the mean](#visualizing-the-distribution-of-the-mean)
+
+## Installation
 
 Install with
 ```julia

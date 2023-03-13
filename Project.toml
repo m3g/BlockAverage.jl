@@ -1,7 +1,7 @@
 name = "BlockAverage"
 uuid = "83ccec75-4b2a-4217-b72b-3a6c241f5d0c"
 authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
-version = "0.3.5"
+version = "0.3.6-DEV"
 
 [deps]
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"

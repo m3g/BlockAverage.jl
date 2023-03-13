@@ -60,27 +60,29 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
     merr = findmax(b.xmean_stderr)
-    print(io, """
-              -------------------------------------------------------------------
-              $(typeof(b))
-              -------------------------------------------------------------------
-              Estimated value (mean by default) = $(b.xmean)
-              Length of data series: $(length(b.x))
-              
-              Block sizes: $(_print_block_sizes(b.blocksize))
-              
-              Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
-              
-              Deviations in last 3 blocks:
-                       percentual: $((100/b.xmean)*(b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
-                         absolute: $((b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
-              
-              Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
-              Characteristic time of autocorrelation decay: 
-                      as fraction of series length: $(b.tau / length(b.x))
-                                          absolute: $(b.tau)
-              -------------------------------------------------------------------
-              """
+    print(
+        io,
+        """
+        -------------------------------------------------------------------
+        $(typeof(b))
+        -------------------------------------------------------------------
+        Estimated value (mean by default) = $(b.xmean)
+        Length of data series: $(length(b.x))
+
+        Block sizes: $(_print_block_sizes(b.blocksize))
+
+        Maximum standard error (error, block size): $((merr[1], b.blocksize[merr[2]]))
+
+        Deviations in last 3 blocks:
+                 percentual: $((100/b.xmean)*(b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
+                   absolute: $((b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
+
+        Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
+        Characteristic time of autocorrelation decay: 
+                as fraction of series length: $(b.tau / length(b.x))
+                                    absolute: $(b.tau)
+        -------------------------------------------------------------------
+        """
     )
 end
 
@@ -112,16 +114,13 @@ function adjust_xinput(x_input, block_size, var="max_block_size")
 end
 
 """
-
-```
-block_average(
-    x::AbstractVector{T};
-    by = mean,
-    min_block_size::Int = 1,
-    max_block_size::Int = length(x),
-    lags::Union{Nothing,AbstractVector{Int}} = nothing,
-) where {T<:Real}
-```
+    block_average(
+        x::AbstractVector{T};
+        by = mean,
+        min_block_size::Int = 1,
+        max_block_size::Int = length(x),
+        lags::Union{Nothing,AbstractVector{Int}} = nothing,
+    ) where {T<:Real}
 
 This function peforms some convergence analysis for a property computed from a series of data, typically a time-series. 
 The data is given in vector `x`, and `by` defines the property to be estimated, typically, and by default, the mean value.
@@ -258,17 +257,19 @@ struct MeanDistribution{N}
     std_err_of_the_mean::Float64
 end
 function Base.show(io::IO, ::MIME"text/plain", m::MeanDistribution)
-    print(io, """
-              -------------------------------------------------------------------
-              $(typeof(m))
-              -------------------------------------------------------------------
-              Number of blocks: $(length(m.block_mean))
-              Estimated mean: = $(m.mean)
-              Standard error of the mean: $(m.std_err_of_the_mean)
-              Standard deviation of the mean: $(m.std_of_the_mean)
-              > block_mean contains the mean computed for each block.
-              -------------------------------------------------------------------
-              """
+    print(
+        io,
+        """
+        -------------------------------------------------------------------
+        $(typeof(m))
+        -------------------------------------------------------------------
+        Number of blocks: $(length(m.block_mean))
+        Estimated mean: = $(m.mean)
+        Standard error of the mean: $(m.std_err_of_the_mean)
+        Standard deviation of the mean: $(m.std_of_the_mean)
+        > block_mean contains the mean computed for each block.
+        -------------------------------------------------------------------
+        """
     )
 end
 
@@ -283,9 +284,9 @@ function histogram(md::MeanDistribution; bins=:auto)
         xlabel="value",
         ylabel="density"
     )
-    Plots.histogram!(p, md.block_mean, bins=bins, normalize=:pdf, color=:gray,label=:none)
+    Plots.histogram!(p, md.block_mean, bins=bins, normalize=:pdf, color=:gray, label=:none)
     σ = md.std_of_the_mean^2
-    Plots.plot!(p, x -> (1/sqrt(π*σ))*exp(-(x-md.mean)^2/σ), linewidth=2, color=:black, label=:none)
+    Plots.plot!(p, x -> (1 / sqrt(π * σ)) * exp(-(x - md.mean)^2 / σ), linewidth=2, color=:black, label=:none)
     return p
 end
 
@@ -323,16 +324,16 @@ julia> BlockAverage.histogram(d)
 """
 function distribution(by::Function, x_input::AbstractVector, block_size)
     block_size = Int(block_size)
-    x = adjust_xinput(x_input, block_size, "block_size") 
+    x = adjust_xinput(x_input, block_size, "block_size")
     n = length(x)
     nblocks = n ÷ block_size
     block_mean = fill(0.0, nblocks)
     # Compute the property in each block
     for i in 1:nblocks
         xblock = @view x[brange(i, block_size)]
-        block_mean[i] = by(xblock) 
+        block_mean[i] = by(xblock)
     end
-    return MeanDistribution{nblocks}(mean(x), std(block_mean), block_mean, std(block_mean)/sqrt(nblocks))
+    return MeanDistribution{nblocks}(mean(x), std(block_mean), block_mean, std(block_mean) / sqrt(nblocks))
 end
 distribution(x_input::AbstractVector, block_size) = distribution(mean, x_input, block_size)
 
@@ -424,7 +425,7 @@ function plot(
     )
     Plots.annotate!(
         maximum(data.blocksize) - 0.1 * maximum(data.blocksize),
-        max(data.xmean_maxerr[end],maximum(data.xmean_maxerr)) - 0.1 * (maximum(data.xmean_maxerr) - minimum(data.xmean_maxerr)),
+        max(data.xmean_maxerr[end], maximum(data.xmean_maxerr)) - 0.1 * (maximum(data.xmean_maxerr) - minimum(data.xmean_maxerr)),
         Plots.text("mean = $(round(data.xmean, digits=2))", "Computer Modern", 12, :right),
         subplot=1,
     )

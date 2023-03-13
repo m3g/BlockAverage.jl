@@ -364,16 +364,13 @@ function test_data(n)
 end
 
 """
-
-```
-plot(
-    data::BlockAverageData; 
-    xlims=nothing, 
-    ylims=nothing,
-    xscale=:identity,
-    title="",
-)
-```
+    plot(
+        data::BlockAverageData; 
+        xlims=nothing, 
+        ylims=nothing,
+        xscale=:identity,
+        title="",
+    )
 
 Function that creates a plot of output data from `block_average`. The optional 
 `xlims`, `ylims`, `xscale`, `title`, can be set to adjust the aparency of the plot.    

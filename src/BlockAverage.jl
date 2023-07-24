@@ -60,8 +60,9 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
     merr = findmax(b.xmean_stderr)
-    print(
-        io,
+    izerolag = findfirst(x -> x <=0, b.autocor)
+    izerolag = isnothing(izerolag) ? 1 : izerolag
+    print(io, chomp(
         """
         -------------------------------------------------------------------
         $(typeof(b))
@@ -77,13 +78,13 @@ function Base.show(io::IO, ::MIME"text/plain", b::BlockAverageData)
                  percentual: $((100/b.xmean)*(b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
                    absolute: $((b.xmean_maxerr[max(1,lastindex(b.xmean_maxerr)-2):end] .- b.xmean))  
 
-        Autocorrelation is first zero with lag: $(b.lags[findfirst(x -> x <=0, b.autocor)])
+        Autocorrelation is first zero with lag: $(b.lags[izerolag])
         Characteristic time of autocorrelation decay: 
                 as fraction of series length: $(b.tau / length(b.x))
                                     absolute: $(b.tau)
         -------------------------------------------------------------------
         """
-    )
+    ))
 end
 
 #

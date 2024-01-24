@@ -1,3 +1,9 @@
+
+
+# Deprecated. This repository is deprecated, and its functionality moved to: https://m3g.github.io/MolSimToolkit.jl/stable/block_averages/
+
+
+
 # BlockAverage
 
 Performs an analysis of the convergence of some property (usually the mean) in a time-series. 
